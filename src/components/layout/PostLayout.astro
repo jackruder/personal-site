@@ -1,0 +1,50 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface PostData {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  tags?: string[];
+  math?: boolean;
+  ogImage?: string;
+  canonical?: string;
+}
+
+interface Props {
+  data: PostData;
+  Content: any;
+}
+
+const { data, Content } = Astro.props;
+const dateFormatter = new Intl.DateTimeFormat('en', { dateStyle: 'long' });
+---
+
+<BaseLayout
+  title={`${data.title} · Blog`}
+  description={data.description}
+  math={data.math}
+  ogImage={data.ogImage}
+  canonical={data.canonical}
+  ogType="article"
+>
+  <div class="page-shell">
+    <p><a href="/blog">← Back to blog</a></p>
+    <article class="prose post-shell">
+      <header>
+        <h1>{data.title}</h1>
+        <p class="post-meta">
+          <span>Published {dateFormatter.format(data.pubDate)}</span>
+          {data.updatedDate && <span> · Updated {dateFormatter.format(data.updatedDate)}</span>}
+        </p>
+        {data.tags && data.tags.length > 0 && (
+          <ul class="tag-list" aria-label="Tags">
+            {data.tags.map((tag) => <li>{tag}</li>)}
+          </ul>
+        )}
+      </header>
+      <Content />
+    </article>
+  </div>
+</BaseLayout>

@@ -1,0 +1,34 @@
+---
+title: 'Hello world'
+description: 'A short introduction to this site, the writing workflow behind it, and the kinds of notes that will appear here.'
+pubDate: '2026-05-14'
+tags:
+  - 'intro'
+  - 'org'
+  - 'astro'
+draft: false
+math: true
+hasDemos: true
+---
+{/* Generated from org/posts/hello-world.org. Do not edit. */}
+
+import Callout from '../../components/ui/Callout.astro';
+
+This site is a small home for research notes, technical blog posts, and a few static pages that explain what I am working on. I wanted a setup that stays simple over time: write in org-mode, convert to MDX, build with Astro, and deploy the resulting static files to a server I control.
+
+The guiding idea is to keep the common case lightweight. Most pages should ship almost no JavaScript, while the occasional interactive demo can load only when it is visible. For prose-heavy posts, that means I can focus on writing and on structure instead of spending time wiring up page-specific build steps. It also keeps the path from draft to publish short enough that the site is easy to maintain during a busy semester.
+
+A small example of the kind of math I want to include is the familiar identity $e^{i\pi} + 1 = 0$. Build-time rendering means equations show up consistently without requiring a client-side math pass after the page loads.
+
+``` ts
+const tools = ['org-mode', 'pandoc', 'astro'];
+console.log(`Publishing with ${tools.join(' -> ')}`);
+```
+
+<Callout type="aside">
+  TODO: replace the placeholder name, links, and bio text throughout the site before launch.
+</Callout>
+
+I am also optimizing for strictness. If a post is missing required metadata, the conversion step should fail immediately with a clear error instead of producing a half-valid page. That constraint is helpful because it turns publishing into a repeatable routine rather than a checklist I have to remember from scratch each time.
+
+As the site grows, I expect to use it for project notes, implementation writeups, and compact essays about methods or systems that are worth documenting carefully. For now, this first post is just enough to prove the pipeline works and to leave a clear template for the next real entry.
