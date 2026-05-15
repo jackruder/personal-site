@@ -14,14 +14,6 @@ const tools = ['org-mode', 'pandoc', 'astro'];
 console.log(`Publishing with ${tools.join(' -> ')}`);
 #+END_SRC
 
-#+BEGIN_EXPORT mdx
-import Callout from '../../components/ui/Callout.astro';
-
-<Callout type="aside">
-  TODO: replace the placeholder name, links, and bio text throughout the site before launch.
-</Callout>
-#+END_EXPORT
-
 I am also optimizing for strictness. If a post is missing required metadata, the conversion step should fail immediately with a clear error instead of producing a half-valid page. That constraint is helpful because it turns publishing into a repeatable routine rather than a checklist I have to remember from scratch each time.
 
 As the site grows, I expect to use it for project notes, implementation writeups, and compact essays about methods or systems that are worth documenting carefully. For now, this first post is just enough to prove the pipeline works and to leave a clear template for the next real entry.

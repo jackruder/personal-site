@@ -12,8 +12,6 @@ hasDemos: false
 ---
 {/* Generated from org/posts/hello-world.org. Do not edit. */}
 
-import Callout from '../../components/ui/Callout.astro';
-
 This site is a small home for research notes, technical blog posts, and a few static pages that explain what I am working on. I wanted a setup that stays simple over time: write in org-mode, convert to MDX, build with Astro, and deploy the resulting static files to a server I control.
 
 The guiding idea is to keep the common case lightweight. Most pages should ship almost no JavaScript, while the occasional interactive demo can load only when it is visible. For prose-heavy posts, that means I can focus on writing and on structure instead of spending time wiring up page-specific build steps. It also keeps the path from draft to publish short enough that the site is easy to maintain during a busy semester.
@@ -24,10 +22,6 @@ A small example of the kind of math I want to include is the familiar identity $
 const tools = ['org-mode', 'pandoc', 'astro'];
 console.log(`Publishing with ${tools.join(' -> ')}`);
 ```
-
-<Callout type="aside">
-  TODO: replace the placeholder name, links, and bio text throughout the site before launch.
-</Callout>
 
 I am also optimizing for strictness. If a post is missing required metadata, the conversion step should fail immediately with a clear error instead of producing a half-valid page. That constraint is helpful because it turns publishing into a repeatable routine rather than a checklist I have to remember from scratch each time.
 

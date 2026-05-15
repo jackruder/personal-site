@@ -9,7 +9,7 @@ is shared.
 
 Pick these values up front. They show up in several places.
 
-- [ ] Production hostname, e.g. `yoursite.example`.
+- [ ] Production hostname, e.g. `jackruder.xyz`.
 - [ ] Server LAN-side hostname/IP, e.g. `homelab.lan` or `192.168.1.10`.
 - [ ] Deploy user on the server, e.g. `deploy`.
 - [ ] Site root path on the server, e.g. `/var/www/personal-site`.
@@ -97,7 +97,7 @@ you don't want to open inbound ports.
 - [ ] `sudo cloudflared service install <token>` after creating a
       tunnel in the Cloudflare dashboard (Zero Trust → Networks →
       Tunnels → Create).
-- [ ] In the tunnel's Public Hostname tab, route `yoursite.example` →
+- [ ] In the tunnel's Public Hostname tab, route `jackruder.xyz` →
       `http://localhost:80` (Caddy listens locally, tunnel terminates
       TLS at Cloudflare).
 - [ ] `DEPLOY_HOST` in step 3 stays your LAN-side hostname/IP, since
@@ -111,14 +111,14 @@ you don't want to open inbound ports.
 Simpler if you already expose ports.
 
 - [ ] Forward ports 80 and 443 on your router to the server's LAN IP.
-- [ ] In Cloudflare DNS, create an A record `yoursite.example` → your
+- [ ] In Cloudflare DNS, create an A record `jackruder.xyz` → your
       public IP, **proxied** (orange cloud).
 - [ ] Set Cloudflare SSL/TLS mode to **Full (strict)**.
 - [ ] On the server, Caddy will obtain a Let's Encrypt cert
       automatically (HTTP-01 works since the orange cloud allows
       `/.well-known/acme-challenge/` through by default).
 - [ ] `DEPLOY_HOST` for SSH should be a different non-proxied DNS
-      record (e.g. `ssh.yoursite.example`, grey cloud), so the SSH
+      record (e.g. `ssh.jackruder.xyz`, grey cloud), so the SSH
       connection doesn't get routed through Cloudflare's HTTP proxy.
 - [ ] Forward port 22 (or a non-standard SSH port) on your router to
       the server.
@@ -135,7 +135,7 @@ any inbound port.
 
 - [ ] `/etc/caddy/Caddyfile`:
   ```caddyfile
-  yoursite.example {
+  jackruder.xyz {
       root * /var/www/personal-site
       file_server
       encode zstd gzip
@@ -161,19 +161,19 @@ any inbound port.
   (the tunnel handles TLS upstream).
 - [ ] `sudo systemctl reload caddy`.
 
-## 6. Update site URL in the code
+## 6. Site URL
 
-- [ ] In `astro.config.mjs`, set `site:` to `https://yoursite.example`
-      (remove the TODO comment).
-- [ ] Commit and push. CI will rebuild with the correct canonical URLs,
-      sitemap, and RSS `<link>` entries.
+Already set to `https://jackruder.xyz` in `astro.config.mjs`. If you
+move to a different domain, update that constant and the fallback in
+`src/components/layout/BaseLayout.astro`, then push — CI rebuilds with
+the new canonical URLs, sitemap, and RSS `<link>` entries.
 
 ## 7. First deploy
 
 - [ ] Push to `main` after un-commenting the rsync step.
 - [ ] Watch the Actions tab; the `Deploy with rsync` step should
       succeed.
-- [ ] Visit `https://yoursite.example` and confirm:
+- [ ] Visit `https://jackruder.xyz` and confirm:
   - The hello-world post renders with KaTeX math.
   - Light/dark theme follows `prefers-color-scheme` (no flash).
   - `/rss.xml` lists the post.

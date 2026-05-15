@@ -17,14 +17,14 @@ interface Props {
 const {
   title,
   ogTitle,
-  description = 'Technical blog and landing page for [YOUR NAME].',
+  description = 'Technical blog and landing page for Jack Ruder.',
   math = false,
   ogImage,
   canonical,
   ogType = 'website',
 } = Astro.props;
 
-const site = Astro.site ?? new URL('https://example.com');
+const site = Astro.site ?? new URL('https://jackruder.xyz');
 const canonicalUrl = canonical ?? new URL(Astro.url.pathname, site).toString();
 const ogImageUrl = ogImage ? new URL(ogImage, site).toString() : undefined;
 const socialTitle = ogTitle ?? title;
