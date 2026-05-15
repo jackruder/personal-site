@@ -30,8 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test conversion script
+        run: make test-script
+
       - name: Build site
         run: make build
+
+      - name: Smoke-test built output
+        run: ./tests/dist.test.sh
 
       # - name: Deploy with rsync
       #   run: |

@@ -15,6 +15,13 @@ A static personal landing page and technical blog built with Astro, authored pri
 2. Edit the org frontmatter and body.
 3. Run `make build`.
 
+## Tests
+
+`make test` runs both suites:
+
+- `make test-script` — shell tests for the org-to-MDX conversion (requires `pandoc`).
+- `make test-dist` — smoke checks against the built `dist/` (builds first if needed).
+
 ## More documentation
 
 - See `AUTHORING.md` for authoring conventions and the org-to-MDX workflow.
