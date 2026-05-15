@@ -1,4 +1,4 @@
-import { defineCollection, z } from 'astro:content';
+import { z } from 'astro:content';
 
 export const blogSchema = z.object({
   title: z.string().min(1).max(120),
@@ -16,10 +16,3 @@ export const blogSchema = z.object({
   (data) => !data.updatedDate || data.updatedDate >= data.pubDate,
   { message: 'updatedDate must be after pubDate' }
 );
-
-const blog = defineCollection({
-  type: 'content',
-  schema: blogSchema,
-});
-
-export const collections = { blog };

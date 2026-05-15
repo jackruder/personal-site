@@ -49,7 +49,7 @@ if grep -Eq '\\\(|\\\[|\$\$' "$input"; then
 fi
 
 has_demos=false
-if grep -Eiq '^#\+BEGIN_EXPORT[[:space:]]+mdx' "$input"; then
+if grep -Eq 'client:(load|idle|visible|media|only)' "$input"; then
   has_demos=true
 fi
 
@@ -71,7 +71,7 @@ pandoc "$input" \
   --from org \
   --to gfm+yaml_metadata_block+footnotes+tex_math_dollars+raw_attribute \
   --wrap=preserve \
-  --shift-heading-level-by=-1 \
+  --shift-heading-level-by=1 \
   -o "$tmp_output"
 
 sed -i "s#\.\./assets/$slug/#/blog-assets/$slug/#g" "$tmp_output"

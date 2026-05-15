@@ -1,4 +1,5 @@
 ---
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
 import BaseLayout from './BaseLayout.astro';
 
 interface PostData {
@@ -14,7 +15,7 @@ interface PostData {
 
 interface Props {
   data: PostData;
-  Content: any;
+  Content: AstroComponentFactory;
 }
 
 const { data, Content } = Astro.props;
@@ -23,6 +24,7 @@ const dateFormatter = new Intl.DateTimeFormat('en', { dateStyle: 'long' });
 
 <BaseLayout
   title={`${data.title} · Blog`}
+  ogTitle={data.title}
   description={data.description}
   math={data.math}
   ogImage={data.ogImage}
@@ -35,8 +37,7 @@ const dateFormatter = new Intl.DateTimeFormat('en', { dateStyle: 'long' });
       <header>
         <h1>{data.title}</h1>
         <p class="post-meta">
-          <span>Published {dateFormatter.format(data.pubDate)}</span>
-          {data.updatedDate && <span> · Updated {dateFormatter.format(data.updatedDate)}</span>}
+          <span>Published {dateFormatter.format(data.pubDate)}</span>{data.updatedDate && <span> · Updated {dateFormatter.format(data.updatedDate)}</span>}
         </p>
         {data.tags && data.tags.length > 0 && (
           <ul class="tag-list" aria-label="Tags">
