@@ -33,11 +33,11 @@ The conversion script sets these by scanning content; don't add them by hand:
 
 ## Top-level structure
 
-The org file's `#+TITLE:` is the post title; do not repeat it as a heading in the body. Use `*` for top-level body headings (the conversion uses `--shift-heading-level-by=-1` so `*` becomes `<h2>` in output — `<h1>` is reserved for the title rendered by the template).
+The org file's `#+TITLE:` is the post title; do not repeat it as a heading in the body. Use `*` for top-level body headings (the conversion uses `--shift-heading-level-by=1` so `*` becomes `<h2>` in output — `<h1>` is reserved for the title rendered by the template).
 
 ## Math
 
-Write inline math as `\(...\)` and display math as `\[...\]`. KaTeX renders these at build time. Do not use `$...$` or `$$...$$` (avoids ambiguity with literal dollar signs).
+Write inline math in org as `\(...\)` and display math as `\[...\]`. Pandoc rewrites both into `$...$` / `$$...$$` in the generated MDX, and KaTeX renders them at build time. Do not author math in org with `$...$` or `$$...$$` — it creates ambiguity with literal dollar signs in the source.
 
 ## Code blocks
 

@@ -10,21 +10,20 @@ const dateFormatter = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
 const getPostUrl = (post) => `/blog/${post.id.replace(/\.mdx$/, '')}/`;
 ---
 
-<BaseLayout title="[YOUR NAME]" description="Landing page and technical blog for a student and researcher.">
+<BaseLayout title="Jack Ruder" description="Landing page and technical blog for Jack Ruder, working on probabilistic machine learning.">
   <section class="hero">
     <p class="muted">Student · Researcher</p>
-    <h1>[YOUR NAME]</h1>
+    <h1>Jack Ruder</h1>
     <p>
-      I study TODO research topics and use this site for a small landing page plus notes on experiments,
-      systems, and technical writing.
+      I work on probabilistic machine learning and use this site for a small landing page plus notes on
+      experiments, systems, and technical writing.
     </p>
     <nav aria-label="Profile links">
       <ul class="link-list">
         <li><a href="/blog">Blog</a></li>
         <li><a href="/cv">CV</a></li>
-        <li><a href="mailto:TODO@example.com">Email</a></li>
-        <li><a href="https://github.com/TODO">GitHub</a></li>
-        <li><a href="https://scholar.google.com/citations?user=TODO">Scholar</a></li>
+        <li><a href="mailto:contact@jackruder.xyz">Email</a></li>
+        <li><a href="https://github.com/jackruder">GitHub</a></li>
       </ul>
     </nav>
   </section>

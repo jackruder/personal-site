@@ -6,7 +6,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
 export default defineConfig({
-  site: 'https://example.com', // TODO: replace before launch
+  site: 'https://jackruder.xyz',
   output: 'static',
   integrations: [mdx(), react(), sitemap()],
   markdown: {
