@@ -1,0 +1,29 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../components/layout/BaseLayout.astro';
+
+const posts = (await getCollection('blog', ({ data }) => (import.meta.env.PROD ? !data.draft : true)))
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const dateFormatter = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
+const getPostUrl = (post) => `/blog/${post.id.replace(/\.mdx$/, '')}/`;
+---
+
+<BaseLayout title="Blog" description="Technical blog posts and research notes.">
+  <section class="card prose">
+    <h1>Blog</h1>
+    <ul class="post-list">
+      {posts.map((post) => (
+        <li>
+          <h2><a href={getPostUrl(post)}>{post.data.title}</a></h2>
+          <p class="muted">{dateFormatter.format(post.data.pubDate)}</p>
+          <p>{post.data.description}</p>
+          <div class="tag-list">
+            {post.data.tags.map((tag) => <span>{tag}</span>)}
+            {post.data.hasDemos && <span class="badge">Interactive</span>}
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+</BaseLayout>

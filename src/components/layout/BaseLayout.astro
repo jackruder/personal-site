@@ -1,0 +1,65 @@
+---
+import '../../styles/global.css';
+import Header from './Header.astro';
+import Footer from './Footer.astro';
+import katexStyles from 'katex/dist/katex.min.css?url';
+
+interface Props {
+  title: string;
+  ogTitle?: string;
+  description?: string;
+  math?: boolean;
+  ogImage?: string;
+  canonical?: string;
+  ogType?: 'website' | 'article';
+}
+
+const {
+  title,
+  ogTitle,
+  description = 'Technical blog and landing page for Jack Ruder.',
+  math = false,
+  ogImage,
+  canonical,
+  ogType = 'website',
+} = Astro.props;
+
+const site = Astro.site ?? new URL('https://jackruder.xyz');
+const canonicalUrl = canonical ?? new URL(Astro.url.pathname, site).toString();
+const ogImageUrl = ogImage ? new URL(ogImage, site).toString() : undefined;
+const socialTitle = ogTitle ?? title;
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (function () {
+        const stored = localStorage.getItem('theme');
+        const theme = stored === 'light' || stored === 'dark'
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={socialTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {math && <link rel="stylesheet" href={katexStyles} />}
+  </head>
+  <body>
+    <Header />
+    <main>
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

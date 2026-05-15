@@ -1,0 +1,57 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pandoc
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test conversion script
+        run: make test-script
+
+      - name: Build site
+        run: make build
+
+      - name: Smoke-test built output
+        run: ./tests/dist.test.sh
+
+      # To enable deploys, follow DEPLOYMENT.md, then uncomment this step.
+      # - name: Deploy with rsync
+      #   env:
+      #     DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      #     DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      #     DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      #     DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      #     DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      #   run: |
+      #     mkdir -p ~/.ssh && chmod 700 ~/.ssh
+      #     printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+      #     chmod 600 ~/.ssh/id_ed25519
+      #     printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      #     rsync -avz --delete \
+      #       -e "ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=~/.ssh/known_hosts" \
+      #       dist/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH"
