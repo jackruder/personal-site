@@ -39,7 +39,7 @@ jobs:
       - name: Smoke-test built output
         run: ./tests/dist.test.sh
 
-      # To enable deploys, follow DEPLOYMENT.md, then uncomment this step.
+      # To enable deploys, follow DEPLOYMENT.org, then uncomment this step.
       # - name: Deploy with rsync
       #   env:
       #     DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}

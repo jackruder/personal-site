@@ -1,0 +1,296 @@
+#+TITLE: Deployment Guide
+#+DESCRIPTION: End-to-end checklist for deploying the built site to a Caddy VM fronted by Cloudflare.
+
+End-to-end checklist for taking the built =dist/= directory live on an
+Alpine Linux VM running Caddy, fronted by Cloudflare DNS with the
+orange-cloud proxy and Full (strict) SSL/TLS mode.
+
+The current deploy path is *manual from your laptop*: =make build &&
+make deploy= rsyncs the built site to the VM over SSH. CI-driven
+deploys are wired up in =.github/workflows/deploy.yml= but the rsync
+step is commented out because GitHub-hosted runners can't reach a VM
+on a private LAN. See "CI-driven deploys (future work)" at the end of
+this doc for what would need to change to enable them.
+
+Assumptions baked into this guide:
+
+- The Caddy VM (Alpine Linux) is already provisioned and you have SSH
+  access from your laptop (LAN, Tailscale, or similar).
+- Cloudflare DNS already has a *proxied* (orange-cloud) A record for
+  =jackruder.xyz= pointing at the VM's public IP.
+- Cloudflare SSL/TLS mode is set to *Full (strict)*.
+
+* 0. Decide naming
+
+Pick these values up front. They show up in several places.
+
+- [X] Production hostname, e.g. =jackruder.xyz=.
+- [ ] VM host you SSH to. Because the production record is
+  orange-clouded, this *must not* be =jackruder.xyz=. Use the VM's
+  LAN/Tailscale IP, public IP, or a separate grey-cloud DNS record
+  (e.g. =ssh.jackruder.xyz=, DNS-only).
+- [X] Deploy user on the VM, e.g. =deploy=.
+- [X] Site root path on the VM, e.g. =/var/www/personal-site=.
+
+* 1. Prepare the VM
+
+Run on the Caddy VM. Caddy is already installed; this step creates the
+deploy user, the site root, and grants Caddy read access. Commands
+below assume you're root — prefix with =sudo= / =doas= if you've set
+one of those up, or just =su -= first.
+
+- [X] Create the deploy user and site root. Alpine uses BusyBox
+  =adduser=:
+  #+BEGIN_SRC sh
+  adduser -D -s /bin/sh deploy
+  mkdir -p /var/www/personal-site
+  chown -R deploy:deploy /var/www/personal-site
+  #+END_SRC
+- [ ] Install =rsync=. Alpine's base image doesn't ship it, and
+  =rsync= on your laptop exec's =rsync --server= on the remote side —
+  if the binary isn't present you'll see =sh: rsync: not found=:
+  #+BEGIN_SRC sh
+  apk add rsync
+  #+END_SRC
+- [X] Let the =caddy= user read the site root. The Alpine Caddy
+  package runs as user =caddy=; adding it to the =deploy= group keeps
+  things tidy. Setting the setgid bit on the directory makes new files
+  created by rsync inherit the =deploy= group automatically, so Caddy
+  doesn't lose read access on fresh files:
+  #+BEGIN_SRC sh
+  addgroup caddy deploy
+  chmod -R g+rX /var/www/personal-site
+  chmod g+s /var/www/personal-site
+  #+END_SRC
+- [ ] Lock the deploy user down to rsync-only (optional but
+  recommended). Append to the relevant key in
+  =/home/deploy/.ssh/authorized_keys=:
+  #+BEGIN_EXAMPLE
+  command="rsync --server -vlogDtprze.iLsfxC . /var/www/personal-site/",no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding <ssh-ed25519 …>
+  #+END_EXAMPLE
+  Skip this if you'd rather keep a normal shell for the user.
+
+* 2. Set up SSH key auth
+
+Run on your local machine.
+
+- [ ] Generate an ed25519 keypair dedicated to this deploy. *Do not
+  reuse your personal SSH key.*
+  #+BEGIN_SRC sh
+  ssh-keygen -t ed25519 -N '' -f ./deploy_key -C 'personal-site deploy'
+  #+END_SRC
+  Keep =deploy_key= and =deploy_key.pub= in the project root —
+  =.gitignore= already excludes them.
+- [ ] Install the public key into the deploy user's
+  =authorized_keys=. The =adduser -D= from step 1 leaves =deploy=
+  password-less, so =ssh-copy-id= won't work — instead, paste the key
+  in from a root shell on the VM. Print =deploy_key.pub= on your
+  laptop, copy it to the clipboard, then on the VM (as root):
+  #+BEGIN_SRC sh
+  install -d -o deploy -g deploy -m 700 /home/deploy/.ssh
+  # Paste the key (with the command="..." prefix from step 1 if you
+  # locked it down) into:
+  #   /home/deploy/.ssh/authorized_keys
+  # Then fix ownership/perms:
+  chown deploy:deploy /home/deploy/.ssh/authorized_keys
+  chmod 600 /home/deploy/.ssh/authorized_keys
+  #+END_SRC
+  Prefer =ssh-copy-id=? Give =deploy= a temporary password first with
+  =passwd deploy=, run =ssh-copy-id -i ./deploy_key.pub deploy@<vm-host>=,
+  then disable password login *without* locking the account. *Do not*
+  use =passwd -l deploy= — Alpine's sshd links against PAM, and PAM
+  rejects locked accounts even after pubkey auth succeeds, so key auth
+  silently fails. Either set a long random password and forget it, or
+  edit =/etc/shadow= and replace the deploy line's password field with
+  a single =*= (means "no password set, account *not* locked"). Avoid
+  =!= in that field — that's the locked form.
+- [ ] Verify key auth works (run on your laptop):
+  #+BEGIN_SRC sh
+  ssh -i ./deploy_key deploy@<vm-host> 'whoami'
+  #+END_SRC
+  Should print =deploy= with no password prompt.
+
+* 3. Caddy configuration
+
+- [ ] =/etc/caddy/Caddyfile=:
+  #+BEGIN_SRC caddyfile
+  jackruder.xyz, www.jackruder.xyz {
+      root * /var/www/personal-site
+      file_server
+      encode zstd gzip
+
+      # Long cache for Astro's hashed assets and locally-stored images.
+      @assets path /_astro/* /blog-assets/*
+      header @assets Cache-Control "public, max-age=31536000, immutable"
+
+      # Short cache for HTML so deploys propagate quickly.
+      @html path *.html /
+      header @html Cache-Control "public, max-age=300, must-revalidate"
+
+      header {
+          Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+          X-Content-Type-Options "nosniff"
+          Referrer-Policy "strict-origin-when-cross-origin"
+      }
+
+      handle_errors {
+          rewrite * /404.html
+          file_server
+      }
+  }
+  #+END_SRC
+  No =tls= block needed — Caddy auto-provisions Let's Encrypt certs.
+  If =www.jackruder.xyz= doesn't yet resolve, add a Cloudflare CNAME
+  =www= → =jackruder.xyz= (orange-cloud is fine), or drop the =www.=
+  hostname from the site block.
+- [ ] Reload Caddy (Alpine uses OpenRC, run as root):
+  #+BEGIN_SRC sh
+  rc-service caddy reload
+  #+END_SRC
+  Use =restart= instead of =reload= if you changed something Caddy
+  can't pick up live.
+- [ ] Make sure Caddy comes up at boot:
+  #+BEGIN_SRC sh
+  rc-update add caddy default
+  #+END_SRC
+
+* 4. Networking sanity check
+
+Cloudflare DNS and SSL/TLS are already configured. Two things that
+configuration implies are worth verifying on the VM side:
+
+1. *Inbound 80 and 443 must be reachable* from Cloudflare's IP ranges.
+   Port 80 specifically has to stay open so Caddy can complete the
+   Let's Encrypt HTTP-01 challenge — Cloudflare's orange cloud
+   forwards =/.well-known/acme-challenge/*= to the origin in the
+   clear, and Full (strict) only kicks in once the cert exists. If
+   you'd rather not depend on HTTP-01, swap in a Cloudflare Origin
+   Certificate or use the DNS-01 challenge with the
+   =caddy-dns/cloudflare= plugin (and a scoped API token).
+2. *Full (strict) requires a valid cert at the origin.* Caddy
+   auto-provisions one on first request, so as long as port 80 is
+   open the first hit will succeed; subsequent renewals are
+   automatic.
+
+* 5. Local deploy
+
+The =deploy= make target wraps rsync with sensible defaults. Config
+lives in =.deploy.env= (gitignored — keep machine-specific values
+out of the repo):
+
+- [ ] Create =.deploy.env= in the project root with at minimum
+  =DEPLOY_HOST=. Other values default to what's documented above:
+  #+BEGIN_SRC sh
+  # .deploy.env
+  DEPLOY_HOST=10.181.13.101   # or ssh.jackruder.xyz, Tailscale IP, etc.
+  # Optional overrides — these are the defaults:
+  # DEPLOY_USER=deploy
+  # DEPLOY_PATH=/var/www/personal-site/
+  # DEPLOY_KEY=./deploy_key
+  #+END_SRC
+- [ ] Build and deploy:
+  #+BEGIN_SRC sh
+  make build
+  make deploy
+  #+END_SRC
+  =make deploy= depends on =build=, so =make deploy= alone is enough
+  if you don't mind it always rebuilding.
+- [ ] Visit =https://jackruder.xyz= and confirm:
+  - The hello-world post renders with KaTeX math.
+  - Light/dark theme follows =prefers-color-scheme= (no flash).
+  - =/rss.xml= lists the post.
+  - =/sitemap-index.xml= exists.
+
+* 6. Site URL
+
+Already set to =https://jackruder.xyz= in =astro.config.mjs=. If you
+move to a different domain, update that constant and the fallback in
+=src/components/layout/BaseLayout.astro=, then rebuild — the canonical
+URLs, sitemap, and RSS =<link>= entries all derive from it.
+
+* 7. After it's live
+
+- [ ] In Cloudflare Rules → Cache Rules, set HTML to revalidate
+  quickly (e.g. 5 min) and hash-named assets under =/_astro/= to cache
+  for a year.
+- [ ] Consider Cloudflare Page Rules to redirect =www.= to apex (or
+  vice versa) if you'd rather not serve both.
+- [ ] Add backup: a nightly =rsync= of =/var/www/personal-site= to
+  another machine, or rely on the fact that =dist/= is fully
+  regenerable from the repo (the source of truth).
+- [ ] Decide on a rollback strategy. The simplest: keep the previous
+  =dist/= around on the VM.
+  #+BEGIN_SRC sh
+  # On the VM, before each deploy (optional pre-rsync hook):
+  rsync -a --delete /var/www/personal-site/ /var/www/personal-site.prev/
+  #+END_SRC
+
+* 8. CI-driven deploys (future work)
+
+=.github/workflows/deploy.yml= already builds and tests on every push
+to =main=. The =Deploy with rsync= step is commented out because
+GitHub-hosted runners run in GitHub's cloud and can't reach a VM on a
+private network. To turn CI deploys on, the VM has to be reachable
+from the runner. Three ways:
+
+1. *Public IP / grey-cloud DNS.* Forward port 22 on your router to
+   the VM, and either point =DEPLOY_HOST= at the public IP or add a
+   grey-cloud DNS record (e.g. =ssh.jackruder.xyz=, DNS-only).
+   Simplest, but exposes SSH to the public internet — fail2ban and
+   key-only auth are strongly recommended.
+2. *Tailscale (or another mesh VPN).* Use the official
+   =tailscale/github-action= to join the runner to your tailnet with
+   an ephemeral auth key. SSH stays private. Slightly more setup but
+   no inbound ports needed.
+3. *Self-hosted runner.* Install the GH Actions runner on the VM
+   itself or another LAN host. The workflow runs inside the network
+   and rsyncs over the LAN. No inbound ports needed; tradeoff is
+   maintaining the runner.
+
+Once one of those is in place, set these repo secrets and uncomment
+the =Deploy with rsync= step in the workflow:
+
+- =DEPLOY_SSH_KEY= — the *contents* of =./deploy_key= (the private
+  key, including =BEGIN=/=END= lines).
+- =DEPLOY_USER= — =deploy=.
+- =DEPLOY_HOST= — the reachable host from above.
+- =DEPLOY_PATH= — =/var/www/personal-site/= (trailing slash matters
+  for rsync semantics).
+- =DEPLOY_KNOWN_HOSTS= — output of
+  =ssh-keyscan -t ed25519 <vm-host>=.
+
+* Troubleshooting
+
+- *Permission denied (publickey)*: check the public key sits in
+  =/home/deploy/.ssh/authorized_keys=, the file is mode =600= owned
+  =deploy:deploy=, and =/home/deploy/.ssh= is mode =700=. If the
+  fingerprints match (=ssh-keygen -lf ...= on the VM equals what
+  =ssh -v= shows on your laptop) and perms look right, the deploy
+  account is probably locked — see the =passwd -l= warning in step 2.
+- *Permission denied (mkdir/mkstemp) during rsync*: the site root
+  isn't owned by =deploy=. Re-run =chown -R deploy:deploy
+  /var/www/personal-site= as root on the VM, and consider the
+  =chmod g+s= step from section 1 to keep group inheritance correct
+  on future writes.
+- *=rsync: server sent unexpected …= after a forced command:* the
+  =command="…"= in =authorized_keys= is too restrictive. Either match
+  the rsync command line exactly or drop the forced-command guard
+  while debugging.
+- *Caddy can't get a cert:* confirm port 80 is reachable from the
+  public internet (HTTP-01 runs over plain HTTP, and Full (strict)
+  doesn't apply until the cert exists). As a fallback, use the
+  DNS-01 challenge with the =caddy-dns/cloudflare= plugin.
+- *Cloudflare 502/526 ("Invalid SSL certificate"):* origin cert
+  mismatch under Full (strict). Check Caddy's status and logs (as
+  root): =rc-service caddy status= and =tail -f /var/log/caddy/*.log=
+  (path depends on your Caddyfile/logrotate setup; some installs send
+  to syslog instead).
+- *403 on the site root after deploy:* the =caddy= user can't read
+  =/var/www/personal-site=. Re-check the =addgroup= /
+  =chmod -R g+rX= / =chmod g+s= steps in section 1, and verify rsync
+  isn't stripping group-read with a too-tight umask on the deploy
+  user.
+- *404s on direct deep links* (e.g. =/blog/hello-world/=): make sure
+  Caddy's =file_server= resolves =index.html= inside the slug
+  directory (it does by default; double-check =try_files= isn't
+  overriding it).
