@@ -5,9 +5,13 @@ A static personal landing page and technical blog built with Astro, authored pri
 ## Quickstart
 
 1. Clone the repository.
-2. Use Node.js 22.12+ locally.
+2. Get a Node 22.12+ toolchain. Either:
+   - Install Node 22 and `pnpm` yourself, or
+   - `nix develop` to drop into a shell with both (from `flake.nix`).
 3. Run `pnpm install`.
 4. Run `make dev`.
+
+The Makefile also auto-wraps `pnpm`/`rsync` invocations in `nix develop --command …` when they aren't on `PATH`, so `make build`/`make deploy` work without entering the devShell first.
 
 ## Writing a new post
 

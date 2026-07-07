@@ -8,6 +8,11 @@ DEPLOY_HOST ?=
 DEPLOY_PATH ?= /var/www/personal-site/
 DEPLOY_KEY  ?= ./deploy_key
 
+# Use pnpm directly if it's on PATH; otherwise fall back to the flake's devShell.
+# Override with `make PNPM=pnpm ...` to force the direct binary.
+PNPM ?= $(shell command -v pnpm >/dev/null 2>&1 && echo pnpm || echo nix develop --command pnpm)
+RSYNC ?= $(shell command -v rsync >/dev/null 2>&1 && echo rsync || echo nix develop --command rsync)
+
 .PHONY: posts dev build preview clean eval-babel test test-script test-dist deploy
 
 posts: $(MDX_FILES)
@@ -16,13 +21,13 @@ src/content/blog/%.mdx: org/posts/%.org scripts/org-to-mdx.sh
 	@./scripts/org-to-mdx.sh $< $@
 
 dev: posts
-	pnpm dev
+	$(PNPM) dev
 
 build: posts
-	pnpm build
+	$(PNPM) build
 
 preview: build
-	pnpm preview
+	$(PNPM) preview
 
 eval-babel:
 	@for f in $(ORG_FILES); do \
@@ -50,4 +55,4 @@ deploy: build
 	  echo "  DEPLOY_HOST=10.0.0.1 make deploy" >&2; \
 	  exit 1; \
 	}
-	rsync -avz --delete -e "ssh -i $(DEPLOY_KEY)" ./dist/ $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)
+	$(RSYNC) -avz --delete -e "ssh -i $(DEPLOY_KEY)" ./dist/ $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)
